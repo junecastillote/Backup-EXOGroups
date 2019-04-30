@@ -105,7 +105,7 @@ Function New-EXOSession
     Import-PSSession $EXOSession -AllowClobber -DisableNameChecking | out-null
 }
 
-#Function to compress the CSV file
+#Function to compress the CSV file (ps 4.0)
 Function New-ZipFile
 {
 	[CmdletBinding()] 
@@ -271,12 +271,8 @@ if ($backupDistributionGroups)
     $i=1
     foreach ($dgroup in $dgrouplist)
     {
-        #[array]$dgroup_members = Get-DistributionGroupMember -id $dgroup.DistinguishedName -ResultSize Unlimited
-        #Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": ($($i) of $($dgrouplist.count)) | [$($dgroup_members.count) members] | $($dgroup.DisplayName)" -ForegroundColor Yellow
-        #$dgroup_members | Export-Clixml -Depth 5 -Path "$backupPath\$($dgroup.PrimarySMTPAddress)_dgMembers.xml"
         $dgroup_members = Get-Group $dgroup.DistinguishedName | Select-Object Members,WindowsEmailAddress,DisplayName
         Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": ($($i) of $($dgrouplist.count)) | [$($dgroup_members.members.count) members] | $($dgroup.DisplayName)" -ForegroundColor Yellow
-        #$dgroup_members | Export-Clixml -Depth 5 -Path "$backupPath\$($dgroup.WindowsEmailAddress).xml"
         $i=$i+1
         $members += $dgroup_members
     }
