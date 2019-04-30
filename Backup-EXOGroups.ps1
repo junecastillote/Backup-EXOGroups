@@ -356,6 +356,7 @@ td, th {
 <table>
 '@
 $htmlBody+="<tr><th>----SUMMARY----</th></tr>"
+$htmlBody+="<tr><th>Tenant Name</th><td>$($tenantName)</td></tr>"
 if ($backupDistributionGroups)
 {
     $htmlBody+="<tr><th>Number of Distribution Groups</th><td>$($dgrouplist.count)</td></tr>"
@@ -386,7 +387,7 @@ $htmlBody+="<tr><th>Time to Complete</th><td>"+ ("{0:N0}" -f $($timeTaken.TotalM
 $htmlBody+="<tr><th>Total Number of Backups</th><td>$($topLevelBackupFiles.Count)</td></tr>"
 $htmlBody+="<tr><th>Total Backup Folder Size</th><td>"+ ("{0:N0}" -f ($deepLevelBackupFiles.Sum / 1KB)) + " KB</td></tr>"
 $htmlBody+="<tr><th>----SETTINGS----</th></tr>"
-$htmlBody+="<tr><th>Tenant Organization</th><td>$($tenantName)</td></tr>"
+$htmlBody+="<tr><th>Compress Backup</th><td>$($compressReport)</td></tr>"
 
 if ($cleanBackupsOlderThanXDays -and $cleanBackupsOlderThanXDays -gt 1)
 {
@@ -396,11 +397,6 @@ elseif ($cleanBackupsOlderThanXDays -and $cleanBackupsOlderThanXDays -eq 1)
 {
     $htmlBody+="<tr><th>Delete Backups Older Than </th><td>$($cleanBackupsOlderThanXDays) day</td></tr>"
 }
-
-#if ($sendEmail)
-#{
-#    $htmlBody+="<tr><th>SMTP Server</th><td>$($smtpServer)</td></tr>"
-#}
 
 $htmlBody+="<tr><th>Script Path</th><td>$($MyInvocation.MyCommand.Definition)</td></tr>"
 $htmlBody+="<tr><th>Script Info</th><td><a href=""$($scriptInfo.ProjectURI)"">$($scriptInfo.Name)</a> version $($scriptInfo.version)</td></tr>"
