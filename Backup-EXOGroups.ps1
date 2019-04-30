@@ -15,7 +15,7 @@
 
 .LICENSEURI
 
-.PROJECTURI
+.PROJECTURI https://github.com/junecastillote/Backup-EXOGroups
 
 .ICONURI
 
@@ -27,6 +27,7 @@
 
 .RELEASENOTES
 
+Initial Release
 
 .PRIVATEDATA
 
@@ -39,11 +40,54 @@
 
 #> 
 Param(
-        # Parameter help description
-        [Parameter(Mandatory=$true)]
-        [string]$loginlXML,
-        [Parameter(Mandatory=$true)]
-        [string]$configXML
+        # office 365 credential
+        # you can pass the credential using variable ($credential = Get-Credential)
+        # then use parameter like so: -credential $credential
+        # OR created an encrypted XML (Get-Credential | export-clixml <file.xml>)
+        # then use parameter like so: -credential (import-clixml <file.xml>)
+        [Parameter(Mandatory=$true,Position=1)]
+        [pscredential]$credential,        
+
+        #path to the backup directory (eg. c:\scripts\backup)
+        [Parameter(Mandatory=$true,Position=2)]
+        [string]$backupDirectory,
+
+        #path to the log directory (eg. c:\scripts\logs)
+        [Parameter()]
+        [string]$logDirectory,
+        
+        #Sender Email Address
+        [Parameter()]
+        [string]$sender,
+
+        #Recipient Email Addresses - separate with comma
+        [Parameter()]
+        [string[]]$recipients,
+
+        #Switch to enable email report
+        [Parameter()]
+        [switch]$sendEmail,
+
+        #Delete older backups (days)
+        [Parameter()]
+        [int]$cleanBackupsOlderThanXDays,
+
+        #switch to backup distribution groups
+        [Parameter()]
+        [switch]$backupDistributionGroups,
+
+        #switch to backup dynamic distribution groups
+        [Parameter()]
+        [switch]$backupDynamicDistributionGroups,
+
+        #switch to enable compression of the report files (ZIP)
+        [Parameter()]
+        [switch]$compressReport,
+
+        #limit the result - for testing purposes only.
+        [Parameter(Mandatory=$false)]
+        [int]$limit
+
 )
 #Functions------------------------------------------------------------------------------------------
 #Function to connect to EXO Shell
@@ -119,84 +163,78 @@ Function Start-TxnLogging
     param 
     (
         [Parameter(Mandatory=$true)]
-        [string]$logPath
+        [string]$logDirectory
     )
 	Stop-TxnLogging
-    Start-Transcript $logPath -Append
+    Start-Transcript $logDirectory -Append
 }
 #----------------------------------------------------------------------------------------------------
 Stop-TxnLogging
 Clear-Host
 $scriptVersion = (Test-ScriptFileInfo -Path $MyInvocation.MyCommand.Definition).version
 
-$script_root = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
-[xml]$config = Get-Content "$($script_root)\config.xml"
-#debug-----------------------------------------------------------------------------------------------
-$enableDebug = $config.options.enableDebug
-#----------------------------------------------------------------------------------------------------
-#backup group types----------------------------------------------------------------------------------
-$backupDistributionGroups = $config.options.backupDistributionGroups
-$backupDynamicDistributionGroups = $config.options.backupDynamicDistributionGroups
-#----------------------------------------------------------------------------------------------------
-#Mail------------------------------------------------------------------------------------------------
-$sendReport = $config.options.SendReport
-[string]$tenantName = $config.options.tenantName
-[string]$fromAddress = $config.options.fromAddress
-[string]$toAddress = $config.options.toAddress
+#Office 365 Mail-------------------------------------------------------------------------------------
 [string]$smtpServer = "smtp.office365.com"
 [int]$smtpPort = "587"
 [string]$mailSubject = "Exchange Online Groups Backup"
 #----------------------------------------------------------------------------------------------------
-#Housekeeping----------------------------------------------------------------------------------------
-$enableHousekeeping = $config.options.enableHousekeeping
 
-if (!$config.options.daysToKeep)
-{
-    [int]$daysToKeep = 1
-}
-else 
-{
-    [int]$daysToKeep = $config.options.daysToKeep
-}
-#----------------------------------------------------------------------------------------------------
 $Today=Get-Date
 [string]$fileSuffix = '{0:dd-MMM-yyyy_hh-mm_tt}' -f $Today
-$logPath = "$($script_root)\Logs"
-$logFile = "$($logPath)\DebugLog_$($fileSuffix).txt"
-$backupDir = "$($script_root)\BackupDir"
-$backupPath = "$($script_root)\BackupDir\$($fileSuffix)"
+$logFile = "$($logDirectory)\DebugLog_$($fileSuffix).txt"
+$backupPath = "$($backupDirectory)\$($fileSuffix)"
 $DG_backupFile = "$($backupPath)\DistributionGroups.xml"
 $DDG_backupFile = "$($backupPath)\DynamicDistributionGroups.xml"
-$zipFile = "$($backupDir)\Backup_$($fileSuffix).zip"
+$zipFile = "$($backupDirectory)\Backup_$($fileSuffix).zip"
 
 #Create folders if not found
-if (!(Test-Path $logPath)) {New-Item -ItemType Directory -Path $logPath | Out-Null}
+if ($logDirectory) 
+{
+    if (!(Test-Path $logDirectory)) 
+        {
+            New-Item -ItemType Directory -Path $logDirectory | Out-Null
+            #start transcribing----------------------------------------------------------------------------------
+            Start-Transcript -Path $logFile
+            #----------------------------------------------------------------------------------------------------
+        }
+}
+
 if (!(Test-Path $backupPath)) {New-Item -ItemType Directory -Path $backupPath | Out-Null}
 
+#parameter check ----------------------------------------------------------------------------------------------------
+$isAllGood = $true
+if (!$backupDistributionGroups -and !$backupDynamicDistributionGroups)
+{
+    Write-Host "ERROR: No backup type is specified. Please use one or both switches (-backupDistributionGroups, -backupDynamicDistributionGroups)" -ForegroundColor Yellow
+    $isAllGood = $false
+}
 
+if ($sendEmail)
+{
+    if (!$sender)
+    {
+        Write-Host "ERROR: A valid sender email address is not specified." -ForegroundColor Yellow
+        $isAllGood = $false
+    }
 
-#start transcribing----------------------------------------------------------------------------------
-if ($enableDebug) {Start-Transcript -Path $logFile}
-#----------------------------------------------------------------------------------------------------
+    if (!$recipients)
+    {
+        Write-Host "ERROR: No recipients specified." -ForegroundColor Yellow
+        $isAllGood = $false
+    }
+}
 
-#check if credential.xml is present------------------------------------------------------------------
-#if (!(Test-Path "$($script_root)\credential.xml"))
-#{
-#    Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": The file 'credential.xml' does not exist. Please run 'Get-Credential | Export-CliXml .\credential.xml' first to setup the authorization account for Office 365" -ForegroundColor RED
-#    EXIT
-#}
+if ($isAllGood -eq $false)
+{
+    EXIT
+}
 #----------------------------------------------------------------------------------------------------
 
 #BEGIN------------------------------------------------------------------------------------------
 Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Begin" -ForegroundColor Green
-Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Connecting to Exchange Online Shell" -ForegroundColor Green
+Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Connecting to Exchange Online Shell with Username $($credential.username)" -ForegroundColor Green
 
 #Connect to O365 Shell
-#Note: This uses an encrypted credential (XML). To store the credential:
-#1. Login to the Server/Computer using the account that will be used to run the script/task
-#2. Run this "Get-Credential | Export-CliXml credential.xml"
-#3. Make sure that credential.xml is in the same folder as the script.
-$credential = Import-Clixml "$($script_root)\credential.xml"
 try 
 {
     New-EXOSession $credential
@@ -208,12 +246,22 @@ catch
     EXIT
 }
 
+$tenantName = (Get-OrganizationConfig).DisplayName
+
 #Start Export Process---------------------------------------------------------------------------
 if ($backupDistributionGroups)
 {
     $members = @()
     Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Retrieving Distribution Groups" -ForegroundColor Yellow
-    $dgrouplist = Get-DistributionGroup -ResultSize Unlimited -WarningAction SilentlyContinue | Sort-Object Name
+    if ($limit)
+    {
+        $dgrouplist = Get-DistributionGroup -ResultSize $limit -WarningAction SilentlyContinue | Sort-Object Name
+    }
+    else
+    {
+        $dgrouplist = Get-DistributionGroup -ResultSize Unlimited -WarningAction SilentlyContinue | Sort-Object Name
+    }
+    
     Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": There are a total of $($dgrouplist.count) Distribution Groups" -ForegroundColor Yellow
     $dgrouplist | Export-Clixml -Path $DG_backupFile -Depth 5
 
@@ -235,38 +283,60 @@ if ($backupDistributionGroups)
 if ($backupDynamicDistributionGroups)
 {
     Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Retrieving Dynamic Distribution Groups" -ForegroundColor Yellow
-    $ddgrouplist = Get-DynamicDistributionGroup -ResultSize Unlimited -WarningAction SilentlyContinue | Sort-Object Name
+    if ($limit)
+    {
+        $ddgrouplist = Get-DynamicDistributionGroup -ResultSize $Limit -WarningAction SilentlyContinue | Sort-Object Name
+    }
+    else
+    {
+        $ddgrouplist = Get-DynamicDistributionGroup -ResultSize Unlimited -WarningAction SilentlyContinue | Sort-Object Name
+    }
+    
     Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": There are a total of $($ddgrouplist.count) Dynamic Distribution Groups" -ForegroundColor Yellow
     $ddgrouplist | Export-Clixml -Path $DDG_backupFile -Depth 5
 }
 #----------------------------------------------------------------------------------------------------
 
-#Zip the file to save space---------------------------------------------------------------------
-Compress-Archive -Path "$backupPath\*.*" -DestinationPath $zipFile -CompressionLevel Optimal
-Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Backup Saved to $zipFile" -ForegroundColor Yellow
-$zipSize = (Get-ChildItem $zipFile | Measure-Object -Property Length -Sum)
-#Allow some time (in seconds) for the file access to close, increase especially if the resulting files are huge, or server I/O is busy.
-$sleepTime=5
-Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Pending next operation for $($sleepTime) seconds" -ForegroundColor Yellow
-Start-Sleep -Seconds $sleepTime
-Remove-Item -Path $backupPath -Recurse -Force
+#Zip the file to save space--------------------------------------------------------------------------
+if ($compressReport)
+{
+    Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Compressing report..." -ForegroundColor Yellow
+    Compress-Archive -Path "$backupPath\*.*" -DestinationPath $zipFile -CompressionLevel Optimal
+    Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Backup Saved to $zipFile" -ForegroundColor Yellow
+    $zipSize = (Get-ChildItem $zipFile | Measure-Object -Property Length -Sum)
+    #Allow some time (in seconds) for the file access to close, increase especially if the resulting files are huge, or server I/O is busy.
+    $sleepTime=5
+    Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Pending next operation for $($sleepTime) seconds" -ForegroundColor Yellow
+    Start-Sleep -Seconds $sleepTime
+    Remove-Item -Path $backupPath -Recurse -Force
+}
+else 
+{
+    Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Backup Saved to $backupPath" -ForegroundColor Yellow
+    $zipSize = (Get-ChildItem "$backupPath\*.*" | Measure-Object -Property Length -Sum)
+}
+
+
+
 #----------------------------------------------------------------------------------------------------
 
-#Invoke Housekeeping----------------------------------------------------------------------------
-if ($enableHousekeeping)
+#Invoke Housekeeping---------------------------------------------------------------------------------
+#if ($enableHousekeeping)
+if ($cleanBackupsOlderThanXDays)
 {
-	Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Deleting backup files older than $($daysToKeep) days" -ForegroundColor Yellow
-	Invoke-Housekeeping -folderPath $backupDir -daysToKeep $daysToKeep
+	Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Deleting backup files older than $($cleanBackupsOlderThanXDays) days" -ForegroundColor Yellow
+	Invoke-Housekeeping -folderPath $backupDirectory -daysToKeep $cleanBackupsOlderThanXDays
 }
 #-----------------------------------------------------------------------------------------------
 #Count the number of backups existing and the total size----------------------------------------
-$backupFiles = (Get-ChildItem $backupDir | Measure-Object -Property Length -Sum)
+$topLevelBackupFiles = (Get-ChildItem $backupDirectory)
+$deepLevelBackupFiles = (Get-ChildItem $backupDirectory -Recurse | Measure-Object -Property Length -Sum)
 #-----------------------------------------------------------------------------------------------
 $timeTaken = New-TimeSpan -Start $Today -End (Get-Date)
 #Send email if option is enabled ---------------------------------------------------------------
-if ($SendReport)
+if ($sendEmail)
 {
-Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Sending report to" ($toAddress -join ";") -ForegroundColor Yellow
+Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Sending report to" ($recipients -join ";") -ForegroundColor Yellow
 $xSubject="[$($tenantName)] $($mailSubject): " + ('{0:dd-MMM-yyyy hh:mm:ss tt}' -f $Today)
 $htmlBody=@'
 <!DOCTYPE html>
@@ -290,25 +360,56 @@ td, th {
 <table>
 '@
 $htmlBody+="<tr><th>----SUMMARY----</th></tr>"
-$htmlBody+="<tr><th>Number of Distribution Groups</th><td>$($dgrouplist.count)</td></tr>"
-$htmlBody+="<tr><th>Number of Dynamic Distribution Groups</th><td>$($ddgrouplist.count)</td></tr>"
+if ($backupDistributionGroups)
+{
+    $htmlBody+="<tr><th>Number of Distribution Groups</th><td>$($dgrouplist.count)</td></tr>"
+}
+
+if ($backupDynamicDistributionGroups)
+{
+    $htmlBody+="<tr><th>Number of Dynamic Distribution Groups</th><td>$($ddgrouplist.count)</td></tr>"
+}
+
 $htmlBody+="<tr><th>Backup Server</th><td>"+(Get-Content env:computername)+"</td></tr>"
-$htmlBody+="<tr><th>Backup File</th><td>$($zipFile)</td></tr>"
+
+if ($compressReport)
+{
+    $htmlBody+="<tr><th>Backup Folder</th><td>$($zipFile)</td></tr>"
+}
+else
+{
+    $htmlBody+="<tr><th>Backup File</th><td>$($backupPath)</td></tr>"
+}
+if ($logDirectory) 
+{
+    $htmlBody+="<tr><th>Log File</th><td>$($logFile)</td></tr>"
+}
+
 $htmlBody+="<tr><th>Backup Size</th><td>"+ ("{0:N0}" -f ($zipSize.Sum / 1KB)) + " KB</td></tr>"
 $htmlBody+="<tr><th>Time to Complete</th><td>"+ ("{0:N0}" -f $($timeTaken.TotalMinutes)) + " Minutes</td></tr>"
-$htmlBody+="<tr><th>Total Number of Backups</th><td>$($backupFiles.Count)</td></tr>"
-$htmlBody+="<tr><th>Total Backup Folder Size</th><td>"+ ("{0:N2}" -f ($backupFiles.Sum / 1KB)) + " KB</td></tr>"
+$htmlBody+="<tr><th>Total Number of Backups</th><td>$($topLevelBackupFiles.Count)</td></tr>"
+$htmlBody+="<tr><th>Total Backup Folder Size</th><td>"+ ("{0:N2}" -f ($deepLevelBackupFiles.Sum / 1KB)) + " KB</td></tr>"
 $htmlBody+="<tr><th>----SETTINGS----</th></tr>"
 $htmlBody+="<tr><th>Tenant Organization</th><td>$($tenantName)</td></tr>"
-$htmlBody+="<tr><th>Debug Enabled</th><td>$($enableDebug)</td></tr>"
-$htmlBody+="<tr><th>Housekeeping Enabled</th><td>$($enableHousekeeping)</td></tr>"
-$htmlBody+="<tr><th>Days to Keep</th><td>$($daysToKeep)</td></tr>"
-$htmlBody+="<tr><th>Report Recipients</th><td>" + $toAddress.Replace(",","<br>") + "</td></tr>"
-$htmlBody+="<tr><th>SMTP Server</th><td>$($smtpServer)</td></tr>"
+
+if ($cleanBackupsOlderThanXDays -and $cleanBackupsOlderThanXDays -gt 1)
+{
+    $htmlBody+="<tr><th>Delete Backups Older Than </th><td>$($cleanBackupsOlderThanXDays) days</td></tr>"
+}
+elseif ($cleanBackupsOlderThanXDays -and $cleanBackupsOlderThanXDays -eq 1)
+{
+    $htmlBody+="<tr><th>Delete Backups Older Than </th><td>$($cleanBackupsOlderThanXDays) day</td></tr>"
+}
+
+#if ($sendEmail)
+#{
+#    $htmlBody+="<tr><th>SMTP Server</th><td>$($smtpServer)</td></tr>"
+#}
+
 $htmlBody+="<tr><th>Script Path</th><td>$($MyInvocation.MyCommand.Definition)</td></tr>"
 $htmlBody+="<tr><th>Script Source Site</th><td><a href=""https://github.com/junecastillote/Export-O365GroupsAndMembers"">Export-O365GroupsAndMembers.ps1</a> version $($scriptVersion)</td></tr>"
 $htmlBody+="</table></body></html>"
-Send-MailMessage -from $fromAddress -to $toAddress.Split(",") -subject $xSubject -body $htmlBody -dno onSuccess, onFailure -smtpServer $SMTPServer -Port $smtpPort -Credential $credential -UseSsl -BodyAsHtml
+Send-MailMessage -from $sender -to $recipients -subject $xSubject -body $htmlBody -dno onSuccess, onFailure -smtpServer $SMTPServer -Port $smtpPort -Credential $credential -UseSsl -BodyAsHtml
 }
 #-----------------------------------------------------------------------------------------------
 Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": End" -ForegroundColor Green
