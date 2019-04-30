@@ -1,8 +1,4 @@
 
 *.txt
-credential.xml
 *.zip
-DistributionGroups.xml
-DynamicDistributionGroups.xml
-DistributionGroupMembers.xml
-testConfig.xml
+*.xml

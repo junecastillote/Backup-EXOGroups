@@ -1,4 +1,5 @@
 
+#requires -version 5.1
 <#PSScriptInfo
 
 .VERSION 1.0
@@ -171,7 +172,7 @@ Function Start-TxnLogging
 #----------------------------------------------------------------------------------------------------
 Stop-TxnLogging
 Clear-Host
-$scriptVersion = (Test-ScriptFileInfo -Path $MyInvocation.MyCommand.Definition).version
+$scriptInfo = Test-ScriptFileInfo -Path $MyInvocation.MyCommand.Definition
 
 #Office 365 Mail-------------------------------------------------------------------------------------
 [string]$smtpServer = "smtp.office365.com"
@@ -179,6 +180,7 @@ $scriptVersion = (Test-ScriptFileInfo -Path $MyInvocation.MyCommand.Definition).
 [string]$mailSubject = "Exchange Online Groups Backup"
 #----------------------------------------------------------------------------------------------------
 
+#Set Paths-------------------------------------------------------------------------------------------
 $Today=Get-Date
 [string]$fileSuffix = '{0:dd-MMM-yyyy_hh-mm_tt}' -f $Today
 $logFile = "$($logDirectory)\DebugLog_$($fileSuffix).txt"
@@ -186,6 +188,7 @@ $backupPath = "$($backupDirectory)\$($fileSuffix)"
 $DG_backupFile = "$($backupPath)\DistributionGroups.xml"
 $DDG_backupFile = "$($backupPath)\DynamicDistributionGroups.xml"
 $zipFile = "$($backupDirectory)\Backup_$($fileSuffix).zip"
+#----------------------------------------------------------------------------------------------------
 
 #Create folders if not found
 if ($logDirectory) 
@@ -315,9 +318,6 @@ else
     Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Backup Saved to $backupPath" -ForegroundColor Yellow
     $zipSize = (Get-ChildItem "$backupPath\*.*" | Measure-Object -Property Length -Sum)
 }
-
-
-
 #----------------------------------------------------------------------------------------------------
 
 #Invoke Housekeeping---------------------------------------------------------------------------------
@@ -374,11 +374,11 @@ $htmlBody+="<tr><th>Backup Server</th><td>"+(Get-Content env:computername)+"</td
 
 if ($compressReport)
 {
-    $htmlBody+="<tr><th>Backup Folder</th><td>$($zipFile)</td></tr>"
+    $htmlBody+="<tr><th>Backup File</th><td>$($zipFile)</td></tr>"
 }
 else
 {
-    $htmlBody+="<tr><th>Backup File</th><td>$($backupPath)</td></tr>"
+    $htmlBody+="<tr><th>Backup Folder</th><td>$($backupPath)</td></tr>"
 }
 if ($logDirectory) 
 {
@@ -388,7 +388,7 @@ if ($logDirectory)
 $htmlBody+="<tr><th>Backup Size</th><td>"+ ("{0:N0}" -f ($zipSize.Sum / 1KB)) + " KB</td></tr>"
 $htmlBody+="<tr><th>Time to Complete</th><td>"+ ("{0:N0}" -f $($timeTaken.TotalMinutes)) + " Minutes</td></tr>"
 $htmlBody+="<tr><th>Total Number of Backups</th><td>$($topLevelBackupFiles.Count)</td></tr>"
-$htmlBody+="<tr><th>Total Backup Folder Size</th><td>"+ ("{0:N2}" -f ($deepLevelBackupFiles.Sum / 1KB)) + " KB</td></tr>"
+$htmlBody+="<tr><th>Total Backup Folder Size</th><td>"+ ("{0:N0}" -f ($deepLevelBackupFiles.Sum / 1KB)) + " KB</td></tr>"
 $htmlBody+="<tr><th>----SETTINGS----</th></tr>"
 $htmlBody+="<tr><th>Tenant Organization</th><td>$($tenantName)</td></tr>"
 
@@ -407,7 +407,7 @@ elseif ($cleanBackupsOlderThanXDays -and $cleanBackupsOlderThanXDays -eq 1)
 #}
 
 $htmlBody+="<tr><th>Script Path</th><td>$($MyInvocation.MyCommand.Definition)</td></tr>"
-$htmlBody+="<tr><th>Script Source Site</th><td><a href=""https://github.com/junecastillote/Export-O365GroupsAndMembers"">Export-O365GroupsAndMembers.ps1</a> version $($scriptVersion)</td></tr>"
+$htmlBody+="<tr><th>Script Source Site</th><td><a href=""$($scriptInfo.ProjectURI)"">$($scriptInfo.Name)</a> version $($scriptInfo.version)</td></tr>"
 $htmlBody+="</table></body></html>"
 Send-MailMessage -from $sender -to $recipients -subject $xSubject -body $htmlBody -dno onSuccess, onFailure -smtpServer $SMTPServer -Port $smtpPort -Credential $credential -UseSsl -BodyAsHtml
 }
