@@ -407,7 +407,7 @@ elseif ($cleanBackupsOlderThanXDays -and $cleanBackupsOlderThanXDays -eq 1)
 #}
 
 $htmlBody+="<tr><th>Script Path</th><td>$($MyInvocation.MyCommand.Definition)</td></tr>"
-$htmlBody+="<tr><th>Script Source Site</th><td><a href=""$($scriptInfo.ProjectURI)"">$($scriptInfo.Name)</a> version $($scriptInfo.version)</td></tr>"
+$htmlBody+="<tr><th>Script Info</th><td><a href=""$($scriptInfo.ProjectURI)"">$($scriptInfo.Name)</a> version $($scriptInfo.version)</td></tr>"
 $htmlBody+="</table></body></html>"
 Send-MailMessage -from $sender -to $recipients -subject $xSubject -body $htmlBody -dno onSuccess, onFailure -smtpServer $SMTPServer -Port $smtpPort -Credential $credential -UseSsl -BodyAsHtml
 }
