@@ -47,7 +47,7 @@ Param(
         # OR created an encrypted XML (Get-Credential | export-clixml <file.xml>)
         # then use parameter like so: -credential (import-clixml <file.xml>)
         [Parameter(Mandatory=$true,Position=1)]
-        [pscredential]$credential,        
+        [pscredential]$credential,
 
         #path to the backup directory (eg. c:\scripts\backup)
         [Parameter(Mandatory=$true,Position=2)]
@@ -299,7 +299,7 @@ if ($backupDynamicDistributionGroups)
 #Zip the file to save space--------------------------------------------------------------------------
 if ($compressReport)
 {
-    Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Compressing report..." -ForegroundColor Yellow
+    Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Compressing Backup..." -ForegroundColor Yellow
     Compress-Archive -Path "$backupPath\*.*" -DestinationPath $zipFile -CompressionLevel Optimal
     Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Backup Saved to $zipFile" -ForegroundColor Yellow
     $zipSize = (Get-ChildItem $zipFile | Measure-Object -Property Length -Sum)
