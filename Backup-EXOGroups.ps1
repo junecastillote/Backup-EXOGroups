@@ -46,11 +46,11 @@ Param(
         # then use parameter like so: -credential $credential
         # OR created an encrypted XML (Get-Credential | export-clixml <file.xml>)
         # then use parameter like so: -credential (import-clixml <file.xml>)
-        [Parameter(Mandatory=$true,Position=1)]
+        [Parameter(Mandatory=$true,Position=0)]
         [pscredential]$credential,        
 
         #path to the backup directory (eg. c:\scripts\backup)
-        [Parameter(Mandatory=$true,Position=2)]
+        [Parameter(Mandatory=$true,Position=1)]
         [string]$backupDirectory,
 
         #path to the log directory (eg. c:\scripts\logs)
@@ -88,7 +88,6 @@ Param(
         #limit the result - for testing purposes only.
         [Parameter(Mandatory=$false)]
         [int]$limit
-
 )
 #Functions------------------------------------------------------------------------------------------
 #Function to connect to EXO Shell
