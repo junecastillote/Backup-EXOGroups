@@ -25,7 +25,7 @@ $recipients = "june.castillote@gmail.com","june@lazyexchangeadmin.com"
 $cleanBackupsOlderThanXDays = 60
 
 #8. Should we compress the backup in a Zip file? $true or $false
-$compressReport = $true
+$compressFiles = $true
 
 #9. Do you want to send the email summary? $true or $false
 $sendEmail = $true
@@ -45,7 +45,7 @@ $params = @{
     sender = $sender
     recipients = $recipients
     cleanBackupsOlderThanXDays = $cleanBackupsOlderThanXDays
-    compressReport = $compressReport
+    compressFiles = $compressFiles
     sendEmail = $sendEmail
     backupDistributionGroups = $backupDistributionGroups
     backupDynamicDistributionGroups = $backupDynamicDistributionGroups

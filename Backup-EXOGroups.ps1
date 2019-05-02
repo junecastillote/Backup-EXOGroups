@@ -47,7 +47,7 @@ Param(
         # OR created an encrypted XML (Get-Credential | export-clixml <file.xml>)
         # then use parameter like so: -credential (import-clixml <file.xml>)
         [Parameter(Mandatory=$true,Position=1)]
-        [pscredential]$credential,
+        [pscredential]$credential,        
 
         #path to the backup directory (eg. c:\scripts\backup)
         [Parameter(Mandatory=$true,Position=2)]
@@ -83,7 +83,7 @@ Param(
 
         #switch to enable compression of the report files (ZIP)
         [Parameter()]
-        [switch]$compressReport,
+        [switch]$compressFiles,
 
         #limit the result - for testing purposes only.
         [Parameter(Mandatory=$false)]
@@ -163,7 +163,7 @@ Function Start-TxnLogging
 {
     param 
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,Position=0)]
         [string]$logDirectory
     )
 	Stop-TxnLogging
@@ -194,12 +194,16 @@ $zipFile = "$($backupDirectory)\Backup_$($fileSuffix).zip"
 if ($logDirectory) 
 {
     if (!(Test-Path $logDirectory)) 
-        {
-            New-Item -ItemType Directory -Path $logDirectory | Out-Null
-            #start transcribing----------------------------------------------------------------------------------
-            Start-Transcript -Path $logFile
-            #----------------------------------------------------------------------------------------------------
-        }
+    {
+        New-Item -ItemType Directory -Path $logDirectory | Out-Null
+        #start transcribing----------------------------------------------------------------------------------
+        Start-TxnLogging $logFile
+        #----------------------------------------------------------------------------------------------------
+    }
+	else
+	{
+		Start-TxnLogging $logFile
+	}
 }
 
 if (!(Test-Path $backupPath)) {New-Item -ItemType Directory -Path $backupPath | Out-Null}
@@ -297,9 +301,9 @@ if ($backupDynamicDistributionGroups)
 #----------------------------------------------------------------------------------------------------
 
 #Zip the file to save space--------------------------------------------------------------------------
-if ($compressReport)
+if ($compressFiles)
 {
-    Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Compressing Backup..." -ForegroundColor Yellow
+    Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Compressing files..." -ForegroundColor Yellow
     Compress-Archive -Path "$backupPath\*.*" -DestinationPath $zipFile -CompressionLevel Optimal
     Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Backup Saved to $zipFile" -ForegroundColor Yellow
     $zipSize = (Get-ChildItem $zipFile | Measure-Object -Property Length -Sum)
@@ -369,7 +373,7 @@ if ($backupDynamicDistributionGroups)
 
 $htmlBody+="<tr><th>Backup Server</th><td>"+(Get-Content env:computername)+"</td></tr>"
 
-if ($compressReport)
+if ($compressFiles)
 {
     $htmlBody+="<tr><th>Backup File</th><td>$($zipFile)</td></tr>"
 }
@@ -387,7 +391,7 @@ $htmlBody+="<tr><th>Time to Complete</th><td>"+ ("{0:N0}" -f $($timeTaken.TotalM
 $htmlBody+="<tr><th>Total Number of Backups</th><td>$($topLevelBackupFiles.Count)</td></tr>"
 $htmlBody+="<tr><th>Total Backup Folder Size</th><td>"+ ("{0:N0}" -f ($deepLevelBackupFiles.Sum / 1KB)) + " KB</td></tr>"
 $htmlBody+="<tr><th>----SETTINGS----</th></tr>"
-$htmlBody+="<tr><th>Compress Backup</th><td>$($compressReport)</td></tr>"
+$htmlBody+="<tr><th>Compress Backup</th><td>$($compressFiles)</td></tr>"
 
 if ($cleanBackupsOlderThanXDays -and $cleanBackupsOlderThanXDays -gt 1)
 {
@@ -397,6 +401,11 @@ elseif ($cleanBackupsOlderThanXDays -and $cleanBackupsOlderThanXDays -eq 1)
 {
     $htmlBody+="<tr><th>Delete Backups Older Than </th><td>$($cleanBackupsOlderThanXDays) day</td></tr>"
 }
+
+#if ($sendEmail)
+#{
+#    $htmlBody+="<tr><th>SMTP Server</th><td>$($smtpServer)</td></tr>"
+#}
 
 $htmlBody+="<tr><th>Script Path</th><td>$($MyInvocation.MyCommand.Definition)</td></tr>"
 $htmlBody+="<tr><th>Script Info</th><td><a href=""$($scriptInfo.ProjectURI)"">$($scriptInfo.Name)</a> version $($scriptInfo.version)</td></tr>"
