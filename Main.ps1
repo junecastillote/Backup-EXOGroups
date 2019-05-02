@@ -19,7 +19,7 @@ $sender = "sender@domain.com"
 
 #6. Who are the recipients?
 #   Multiple recipients can be added (eg. "recipient1@domain.com","recipient2@domain.com")
-$recipients = "june.castillote@gmail.com","june@lazyexchangeadmin.com"
+$recipients = "recipient1@domain.com","recipient2@domain.com"
 
 #7. If you want to delete older backups, define the age in days.
 $cleanBackupsOlderThanXDays = 60
@@ -33,8 +33,12 @@ $sendEmail = $true
 #10. Do you want to backup the Distribution Groups and Members? $true or $false
 $backupDistributionGroups = $true
 
-#11. Do you want to backup the Dynamic DIstribution Groups? $true or $false
+#11. Do you want to backup the Dynamic Distribution Groups? $true or $false
 $backupDynamicDistributionGroups = $true
+
+#12. If you want to test only or set specific result count, change this to any value other than zero.
+# 0 = Unlimited
+$limit = 0
 #------------------------------------------
 
 #DO NOT TOUCH THE BELOW CODES
@@ -49,7 +53,11 @@ $params = @{
     sendEmail = $sendEmail
     backupDistributionGroups = $backupDistributionGroups
     backupDynamicDistributionGroups = $backupDynamicDistributionGroups
-    #Limit = 10
 }
 
-."$scriptDirectory\Backup-EXOGroups.ps1" @params
+if ($limit -gt 0)
+{
+	$params += @{Limit = $limit}
+}
+
+& "$scriptDirectory\Backup-EXOGroups.ps1" @params
