@@ -173,6 +173,35 @@ Stop-TxnLogging
 Clear-Host
 $scriptInfo = Test-ScriptFileInfo -Path $MyInvocation.MyCommand.Definition
 
+#parameter check ----------------------------------------------------------------------------------------------------
+$isAllGood = $true
+if (!$backupDistributionGroups -and !$backupDynamicDistributionGroups)
+{
+    Write-Host "ERROR: No backup type is specified. Please use one or both switches (-backupDistributionGroups, -backupDynamicDistributionGroups)" -ForegroundColor Yellow
+    $isAllGood = $false
+}
+
+if ($sendEmail)
+{
+    if (!$sender)
+    {
+        Write-Host "ERROR: A valid sender email address is not specified." -ForegroundColor Yellow
+        $isAllGood = $false
+    }
+
+    if (!$recipients)
+    {
+        Write-Host "ERROR: No recipients specified." -ForegroundColor Yellow
+        $isAllGood = $false
+    }
+}
+
+if ($isAllGood -eq $false)
+{
+    EXIT
+}
+#----------------------------------------------------------------------------------------------------
+
 #Office 365 Mail-------------------------------------------------------------------------------------
 [string]$smtpServer = "smtp.office365.com"
 [int]$smtpPort = "587"
@@ -207,34 +236,7 @@ if ($logDirectory)
 
 if (!(Test-Path $backupPath)) {New-Item -ItemType Directory -Path $backupPath | Out-Null}
 
-#parameter check ----------------------------------------------------------------------------------------------------
-$isAllGood = $true
-if (!$backupDistributionGroups -and !$backupDynamicDistributionGroups)
-{
-    Write-Host "ERROR: No backup type is specified. Please use one or both switches (-backupDistributionGroups, -backupDynamicDistributionGroups)" -ForegroundColor Yellow
-    $isAllGood = $false
-}
 
-if ($sendEmail)
-{
-    if (!$sender)
-    {
-        Write-Host "ERROR: A valid sender email address is not specified." -ForegroundColor Yellow
-        $isAllGood = $false
-    }
-
-    if (!$recipients)
-    {
-        Write-Host "ERROR: No recipients specified." -ForegroundColor Yellow
-        $isAllGood = $false
-    }
-}
-
-if ($isAllGood -eq $false)
-{
-    EXIT
-}
-#----------------------------------------------------------------------------------------------------
 
 #BEGIN------------------------------------------------------------------------------------------
 Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Begin" -ForegroundColor Green
