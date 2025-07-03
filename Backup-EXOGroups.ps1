@@ -20,7 +20,7 @@
 
 .ICONURI
 
-.EXTERNALMODULEDEPENDENCIES 
+.EXTERNALMODULEDEPENDENCIES
 
 .REQUIREDSCRIPTS
 
@@ -34,12 +34,12 @@ Initial Release
 
 #>
 
-<# 
+<#
 
-.DESCRIPTION 
+.DESCRIPTION
  Backup or Export Exchange Online Groups and Members to XML files.
 
-#> 
+#>
 Param(
         # office 365 credential
         # you can pass the credential using variable ($credential = Get-Credential)
@@ -47,7 +47,7 @@ Param(
         # OR created an encrypted XML (Get-Credential | export-clixml <file.xml>)
         # then use parameter like so: -credential (import-clixml <file.xml>)
         [Parameter(Mandatory=$true,Position=0)]
-        [pscredential]$credential,        
+        [pscredential]$credential,
 
         #path to the backup directory (eg. c:\scripts\backup)
         [Parameter(Mandatory=$true,Position=1)]
@@ -56,7 +56,7 @@ Param(
         #path to the log directory (eg. c:\scripts\logs)
         [Parameter()]
         [string]$logDirectory,
-        
+
         #Sender Email Address
         [Parameter()]
         [string]$sender,
@@ -104,13 +104,13 @@ Function New-EXOSession
     Import-PSSession $EXOSession -AllowClobber -DisableNameChecking | out-null
 }
 
-#Function to compress the CSV file (ps 4.0)
+# Function to compress the CSV file (ps 4.0)
 Function New-ZipFile
 {
-	[CmdletBinding()] 
-    param ( 
-        [Parameter(Mandatory)] 
-        [string]$fileToZip,    
+	[CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [string]$fileToZip,
 				[Parameter(Mandatory)]
 				[string]$destinationZip
 	)
@@ -124,23 +124,23 @@ Function New-ZipFile
 #Function to delete old files based on age
 Function Invoke-Housekeeping
 {
-    [CmdletBinding()] 
-    param ( 
-        [Parameter(Mandatory)] 
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
         [string]$folderPath,
-    
+
 		[Parameter(Mandatory)]
 		[int]$daysToKeep
     )
-    
+
     $datetoDelete = (Get-Date).AddDays(-$daysToKeep)
     $filesToDelete = Get-ChildItem $FolderPath | Where-Object { $_.LastWriteTime -lt $datetoDelete }
 
-    if (($filesToDelete.Count) -gt 0) {	
+    if (($filesToDelete.Count) -gt 0) {
 		foreach ($file in $filesToDelete) {
             Remove-Item -Path ($file.FullName) -Force -ErrorAction SilentlyContinue
 		}
-	}	
+	}
 }
 
 #Function to Stop Transaction Logging
@@ -150,7 +150,7 @@ Function Stop-TxnLogging
 	Do {
 		try {
 			Stop-Transcript | Out-Null
-		} 
+		}
 		catch [System.InvalidOperationException]{
 			$txnLog="stopped"
 		}
@@ -158,9 +158,9 @@ Function Stop-TxnLogging
 }
 
 #Function to Start Transaction Logging
-Function Start-TxnLogging 
+Function Start-TxnLogging
 {
-    param 
+    param
     (
         [Parameter(Mandatory=$true,Position=0)]
         [string]$logDirectory
@@ -219,9 +219,9 @@ $zipFile = "$($backupDirectory)\Backup_$($fileSuffix).zip"
 #----------------------------------------------------------------------------------------------------
 
 #Create folders if not found
-if ($logDirectory) 
+if ($logDirectory)
 {
-    if (!(Test-Path $logDirectory)) 
+    if (!(Test-Path $logDirectory))
     {
         New-Item -ItemType Directory -Path $logDirectory | Out-Null
         #start transcribing----------------------------------------------------------------------------------
@@ -243,11 +243,11 @@ Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Begin" -ForegroundCol
 Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Connecting to Exchange Online Shell with Username $($credential.username)" -ForegroundColor Green
 
 #Connect to O365 Shell
-try 
+try
 {
     New-EXOSession $credential
 }
-catch 
+catch
 {
     Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": There was an error connecting to Exchange Online. Terminating Script" -ForegroundColor YELLOW
     Stop-TxnLogging
@@ -269,7 +269,7 @@ if ($backupDistributionGroups)
     {
         $dgrouplist = Get-DistributionGroup -ResultSize Unlimited -WarningAction SilentlyContinue | Sort-Object Name
     }
-    
+
     Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": There are a total of $($dgrouplist.count) Distribution Groups" -ForegroundColor Yellow
     $dgrouplist | Export-Clixml -Path $DG_backupFile -Depth 5
 
@@ -295,7 +295,7 @@ if ($backupDynamicDistributionGroups)
     {
         $ddgrouplist = Get-DynamicDistributionGroup -ResultSize Unlimited -WarningAction SilentlyContinue | Sort-Object Name
     }
-    
+
     Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": There are a total of $($ddgrouplist.count) Dynamic Distribution Groups" -ForegroundColor Yellow
     $ddgrouplist | Export-Clixml -Path $DDG_backupFile -Depth 5
 }
@@ -314,7 +314,7 @@ if ($compressFiles)
     Start-Sleep -Seconds $sleepTime
     Remove-Item -Path $backupPath -Recurse -Force
 }
-else 
+else
 {
     Write-Host (get-date -Format "dd-MMM-yyyy hh:mm:ss tt") ": Backup Saved to $backupPath" -ForegroundColor Yellow
     $zipSize = (Get-ChildItem "$backupPath\*.*" | Measure-Object -Property Length -Sum)
@@ -382,7 +382,7 @@ else
 {
     $htmlBody+="<tr><th>Backup Folder</th><td>$($backupPath)</td></tr>"
 }
-if ($logDirectory) 
+if ($logDirectory)
 {
     $htmlBody+="<tr><th>Log File</th><td>$($logFile)</td></tr>"
 }
